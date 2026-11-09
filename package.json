@@ -1,0 +1,24 @@
+{
+  "name": "moovbook",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Converta livros (PDF, EPUB, CBZ, DOCX, FB2, TXT, imagens...) em vídeo MP4 direto no navegador.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
+    "mediabunny": "^1.65.2",
+    "pdfjs-dist": "^6.5.438"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.4",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  }
+}
