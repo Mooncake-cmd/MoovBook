@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MoovBook — Livros em vídeo MP4</title>
+    <meta name="description" content="Converta livros em PDF, EPUB, MOBI, CBZ, DOCX, FB2, TXT e imagens em vídeo MP4, definindo quanto tempo cada página fica na tela. Tudo no seu navegador." />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f46e5'/%3E%3Cpath d='M14 18h16a4 4 0 0 1 4 4v26a4 4 0 0 0-4-4H14z' fill='%23fff'/%3E%3Cpath d='M38 26l14 8-14 8z' fill='%23fff'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,700;1,7..72,400;1,7..72,700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="currentColor"/><path d="M14 18h16a4 4 0 0 1 4 4v26a4 4 0 0 0-4-4H14z" fill="#fff"/><path d="M38 26l14 8-14 8z" fill="#fff"/></svg>
+        <span>MoovBook</span>
+      </a>
+      <span class="privacy">🔒 Seus arquivos nunca saem do seu computador</span>
+    </header>
+
+    <main>
+      <!-- Etapa 1: escolher arquivo -->
+      <section id="step-upload" class="hero">
+        <h1>Transforme qualquer livro em um vídeo MP4</h1>
+        <p class="lead">Escolha o livro, defina quanto tempo cada página fica na tela e baixe o vídeo. A conversão acontece inteiramente no seu navegador.</p>
+
+        <label id="dropzone" class="dropzone" tabindex="0">
+          <input id="file-input" type="file" multiple hidden />
+          <div class="dz-icon" aria-hidden="true">📚</div>
+          <strong>Arraste o livro aqui ou clique para escolher</strong>
+          <span class="muted">Um livro por vez — ou várias imagens para formar um livro</span>
+        </label>
+
+        <ul id="formats" class="formats"></ul>
+        <p id="load-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <!-- Etapa 2: configurar e gerar -->
+      <section id="step-editor" class="editor" hidden>
+        <aside class="panel settings" aria-label="Configurações">
+          <div class="book-card">
+            <div>
+              <div class="book-format" id="book-format"></div>
+              <h2 id="book-title"></h2>
+              <div class="muted" id="book-meta"></div>
+            </div>
+            <button id="btn-change" class="btn ghost small" type="button">Trocar livro</button>
+          </div>
+
+          <details open>
+            <summary>⏱️ Tempo de cada página</summary>
+            <div class="field">
+              <span class="label">Modo</span>
+              <div class="seg" role="radiogroup">
+                <label><input type="radio" name="timing" value="fixed" checked /><span>Tempo fixo</span></label>
+                <label><input type="radio" name="timing" value="reading" /><span>Velocidade de leitura</span></label>
+              </div>
+            </div>
+            <div class="field" data-show="timing=fixed">
+              <label for="s-seconds" class="label">Segundos por página</label>
+              <div class="with-unit"><input id="s-seconds" type="number" min="0.5" max="3600" step="0.5" value="5" /><span>s</span></div>
+            </div>
+            <div data-show="timing=reading">
+              <div class="field">
+                <label for="s-wpm" class="label">Palavras por minuto</label>
+                <div class="with-unit"><input id="s-wpm" type="number" min="50" max="1000" step="10" value="200" /><span>ppm</span></div>
+              </div>
+              <div class="field two">
+                <div>
+                  <label for="s-min" class="label">Mínimo</label>
+                  <div class="with-unit"><input id="s-min" type="number" min="0.5" step="0.5" value="4" /><span>s</span></div>
+                </div>
+                <div>
+                  <label for="s-max" class="label">Máximo</label>
+                  <div class="with-unit"><input id="s-max" type="number" min="1" step="1" value="120" /><span>s</span></div>
+                </div>
+              </div>
+              <p class="hint">Páginas sem texto (imagens) usam o tempo mínimo.</p>
+            </div>
+            <p class="hint" data-show="per=2">No modo “livro aberto”, o tempo vale para cada tela (par de páginas).</p>
+            <p class="hint">Você também pode definir um tempo diferente para cada página na lista de páginas.</p>
+            <div class="field two">
+              <div>
+                <label for="s-from" class="label">Da página</label>
+                <input id="s-from" type="number" min="1" value="1" />
+              </div>
+              <div>
+                <label for="s-to" class="label">Até a página</label>
+                <input id="s-to" type="number" min="1" value="1" />
+              </div>
+            </div>
+          </details>
+
+          <details open>
+            <summary>🎬 Vídeo</summary>
+            <div class="field">
+              <label for="s-resolution" class="label">Formato / resolução</label>
+              <select id="s-resolution">
+                <option value="1920x1080">Paisagem 16:9 · Full HD 1920×1080</option>
+                <option value="1280x720">Paisagem 16:9 · HD 1280×720</option>
+                <option value="3840x2160">Paisagem 16:9 · 4K 3840×2160</option>
+                <option value="1080x1920">Vertical 9:16 · 1080×1920 (Reels, TikTok, Shorts)</option>
+                <option value="1080x1350">Retrato 4:5 · 1080×1350</option>
+                <option value="1080x1080">Quadrado 1:1 · 1080×1080</option>
+                <option value="1240x1754">Página A4 · 1240×1754</option>
+                <option value="custom">Personalizado…</option>
+              </select>
+            </div>
+            <div class="field two" data-show="resolution=custom">
+              <div><label for="s-w" class="label">Largura</label><input id="s-w" type="number" min="128" max="4096" step="2" value="1920" /></div>
+              <div><label for="s-h" class="label">Altura</label><input id="s-h" type="number" min="128" max="4096" step="2" value="1080" /></div>
+            </div>
+            <div class="field two">
+              <div>
+                <label for="s-fps" class="label">Quadros/s</label>
+                <select id="s-fps">
+                  <option value="1">1 (mais rápido)</option>
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="24">24</option>
+                  <option value="30" selected>30 (padrão)</option>
+                </select>
+              </div>
+              <div>
+                <label for="s-quality" class="label">Qualidade</label>
+                <select id="s-quality">
+                  <option value="medium">Média</option>
+                  <option value="high" selected>Alta</option>
+                  <option value="veryhigh">Muito alta</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="s-transition" class="label">Transição entre páginas</label>
+              <select id="s-transition">
+                <option value="0">Corte seco</option>
+                <option value="0.3">Fade rápido (0,3 s)</option>
+                <option value="0.6" selected>Fade (0,6 s)</option>
+                <option value="1">Fade lento (1 s)</option>
+              </select>
+            </div>
+          </details>
+
+          <details open>
+            <summary>📖 Layout</summary>
+            <div class="field">
+              <span class="label">Páginas por quadro</span>
+              <div class="seg" role="radiogroup">
+                <label><input type="radio" name="per" value="1" checked /><span>1 página</span></label>
+                <label><input type="radio" name="per" value="2" /><span>2 (livro aberto)</span></label>
+              </div>
+            </div>
+            <div class="field" data-show="kind=fixed">
+              <span class="label">Ajuste da página</span>
+              <div class="seg" role="radiogroup">
+                <label><input type="radio" name="fit" value="contain" checked /><span>Página inteira</span></label>
+                <label><input type="radio" name="fit" value="cover" /><span>Preencher tela</span></label>
+              </div>
+            </div>
+            <div class="field" data-show="kind=fixed">
+              <label for="s-bg" class="label">Cor de fundo</label>
+              <input id="s-bg" type="color" value="#111111" />
+            </div>
+            <label class="check"><input id="s-pagenum" type="checkbox" /> Mostrar número da página</label>
+          </details>
+
+          <details open data-show="kind=reflow">
+            <summary>🔤 Texto</summary>
+            <p class="hint">Este formato é refluído: o texto é diagramado em páginas no tamanho do vídeo.</p>
+            <div class="field">
+              <span class="label">Tema</span>
+              <div class="themes" role="radiogroup">
+                <label title="Claro"><input type="radio" name="theme" value="light" checked /><span style="--a:#ffffff;--b:#1d1d1f">Aa</span></label>
+                <label title="Sépia"><input type="radio" name="theme" value="sepia" /><span style="--a:#f4ecd8;--b:#5b4636">Aa</span></label>
+                <label title="Escuro"><input type="radio" name="theme" value="dark" /><span style="--a:#121212;--b:#e6e6e6">Aa</span></label>
+                <label title="Lousa"><input type="radio" name="theme" value="slate" /><span style="--a:#1e293b;--b:#f8fafc">Aa</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="s-font" class="label">Fonte</label>
+              <select id="s-font"></select>
+            </div>
+            <div class="field">
+              <label for="s-fontsize" class="label">Tamanho da fonte <output id="o-fontsize"></output></label>
+              <input id="s-fontsize" type="range" min="16" max="90" step="1" value="38" />
+            </div>
+            <div class="field">
+              <label for="s-lineheight" class="label">Entrelinha <output id="o-lineheight"></output></label>
+              <input id="s-lineheight" type="range" min="1.1" max="2.2" step="0.05" value="1.5" />
+            </div>
+            <div class="field">
+              <label for="s-margin" class="label">Margem <output id="o-margin"></output></label>
+              <input id="s-margin" type="range" min="2" max="20" step="0.5" value="7" />
+            </div>
+            <label class="check"><input id="s-justify" type="checkbox" checked /> Texto justificado</label>
+          </details>
+        </aside>
+
+        <div class="workspace">
+          <div class="panel preview-panel">
+            <div class="preview-head">
+              <div>
+                <strong id="preview-label">Prévia</strong>
+                <span class="muted" id="preview-duration"></span>
+              </div>
+              <div class="preview-nav">
+                <button class="btn ghost small" id="btn-prev" type="button" aria-label="Página anterior">‹</button>
+                <button class="btn ghost small" id="btn-next" type="button" aria-label="Próxima página">›</button>
+              </div>
+            </div>
+            <div class="preview-stage"><canvas id="preview"></canvas></div>
+          </div>
+
+          <div class="panel generate">
+            <div class="summary">
+              <div><span class="big" id="sum-duration">—</span><span class="muted">duração do vídeo</span></div>
+              <div><span class="big" id="sum-frames">—</span><span class="muted" id="sum-frames-label">páginas no vídeo</span></div>
+              <div><span class="big" id="sum-res">—</span><span class="muted">resolução</span></div>
+            </div>
+            <button id="btn-generate" class="btn primary" type="button">🎬 Gerar vídeo MP4</button>
+          </div>
+
+          <div class="panel progress-panel" id="progress-panel" hidden>
+            <div class="progress-row">
+              <strong id="progress-title">Gerando vídeo…</strong>
+              <button id="btn-cancel" class="btn ghost small" type="button">Cancelar</button>
+            </div>
+            <div class="bar"><div id="progress-bar"></div></div>
+            <div class="muted" id="progress-text"></div>
+            <p class="hint">Mantenha esta aba aberta até terminar.</p>
+          </div>
+
+          <div class="panel result-panel" id="result-panel" hidden>
+            <h3>✅ Vídeo pronto!</h3>
+            <video id="result-video" controls playsinline></video>
+            <div class="result-actions">
+              <a id="btn-download" class="btn primary" download>⬇️ Baixar MP4</a>
+              <span class="muted" id="result-info"></span>
+            </div>
+            <p class="hint" id="result-warning" hidden></p>
+          </div>
+
+          <div class="panel pages-panel">
+            <div class="pages-head">
+              <h3>Páginas <span class="muted" id="pages-count"></span></h3>
+              <div class="pages-tools">
+                <button class="btn ghost small" id="btn-reset-overrides" type="button">Restaurar tempos</button>
+                <button class="btn ghost small" id="btn-include-all" type="button">Incluir todas</button>
+              </div>
+            </div>
+            <p class="hint">Clique numa miniatura para ver a prévia. Digite um tempo para mudar só aquela página, ou desmarque para tirá-la do vídeo.</p>
+            <div id="thumbs" class="thumbs"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      MoovBook · código aberto · funciona melhor no Chrome, Edge, Safari 17+ ou Firefox 130+
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
