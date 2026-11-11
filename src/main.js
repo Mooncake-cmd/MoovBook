@@ -2,6 +2,10 @@ import './styles.css';
 import { loadBook, SUPPORTED, ACCEPT } from './formats/index.js';
 import { buildDocument, ensureFonts, FONT_FAMILIES } from './render.js';
 import { encodeVideo, pickCodec, codecLabel, webCodecsAvailable } from './encoder.js';
+import {
+  startKeepAlive, stopKeepAlive, tabStart, tabProgress, tabFinished, tabReset,
+  notify, notificationsSupported, requestNotificationPermission,
+} from './background.js';
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -34,6 +38,21 @@ $('#file-input').accept = ACCEPT;
 $('#s-font').innerHTML = Object.entries(FONT_FAMILIES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 
 restoreSettings();
+if (!notificationsSupported) {
+  $('#notify-row').hidden = true;
+  $('#s-notify').checked = false;
+} else if (Notification.permission !== 'granted') {
+  $('#s-notify').checked = false; // a permissão foi retirada (ou nunca dada) desde a última visita
+}
+$('#s-notify').addEventListener('change', async (e) => {
+  if (!e.target.checked) return;
+  const ok = await requestNotificationPermission();
+  if (!ok) {
+    e.target.checked = false;
+    saveSettings();
+    toast('As notificações estão bloqueadas para este site. Libere nas configurações do navegador (ícone à esquerda do endereço).', 7000);
+  }
+});
 updateVisibility();
 updateOutputs();
 
@@ -103,6 +122,7 @@ async function openFiles(files) {
 }
 
 function closeBook() {
+  tabReset();
   state.book?.destroy?.();
   state.book = null;
   state.doc = null;
@@ -174,7 +194,7 @@ function readSettings() {
   };
 }
 
-const PERSISTED = ['#s-seconds', '#s-wpm', '#s-min', '#s-max', '#s-fps', '#s-quality', '#s-transition', '#s-resolution', '#s-w', '#s-h', '#s-bg', '#s-pagenum', '#s-font', '#s-fontsize', '#s-lineheight', '#s-margin', '#s-justify'];
+const PERSISTED = ['#s-seconds', '#s-wpm', '#s-min', '#s-max', '#s-fps', '#s-quality', '#s-transition', '#s-notify', '#s-resolution', '#s-w', '#s-h', '#s-bg', '#s-pagenum', '#s-font', '#s-fontsize', '#s-lineheight', '#s-margin', '#s-justify'];
 const PERSISTED_RADIOS = ['timing', 'fit', 'theme'];
 
 function saveSettings() {
@@ -564,8 +584,12 @@ async function generate() {
   const slides = includedSlides();
   if (!slides.length) return;
 
+  // precisa começar ainda "dentro" do clique, antes de qualquer await
+  startKeepAlive();
+
   const codec = await pickCodec(s.width, s.height, s.quality);
   if (!codec) {
+    stopKeepAlive();
     toast('Seu navegador não consegue codificar vídeo nesta resolução. Tente uma resolução menor ou outro navegador (Chrome/Edge recentes).', 6000);
     return;
   }
@@ -580,6 +604,8 @@ async function generate() {
   $('#progress-title').textContent = 'Gerando vídeo…';
   $('#progress-text').textContent = 'Preparando…';
   $('#progress-panel').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  const bookTitle = state.book.title;
+  tabStart(document.title, bookTitle);
 
   let wakeLock = null;
   try {
@@ -598,23 +624,30 @@ async function generate() {
       transition: s.fps >= 5 ? s.transition : 0,
       quality: s.quality,
       signal: state.abort.signal,
-      onProgress: ({ done, total, time, totalTime }) => {
-        const frac = totalTime ? time / totalTime : done / total;
+      onProgress: ({ page, total, time, totalTime }) => {
+        const frac = totalTime ? time / totalTime : page / total;
         const elapsed = (performance.now() - started) / 1000;
         const eta = frac > 0.02 ? (elapsed / frac) * (1 - frac) : null;
         $('#progress-bar').style.width = `${(frac * 100).toFixed(1)}%`;
-        $('#progress-text').textContent = `Página ${done} de ${total} · ${formatTime(time)} de ${formatTime(totalTime)} de vídeo${eta != null ? ` · faltam ~${formatTime(eta)}` : ''}`;
+        $('#progress-text').textContent = `Página ${page} de ${total} · ${formatTime(time)} de ${formatTime(totalTime)} de vídeo${eta != null ? ` · faltam ~${formatTime(eta)}` : ''}`;
+        tabProgress(frac, bookTitle);
       },
     });
     showResult(result, s);
+    tabFinished(true, bookTitle);
+    if ($('#s-notify').checked) notify('✅ Vídeo pronto!', `${bookTitle} · ${formatTime(result.duration)} · ${formatBytes(result.blob.size)}`);
   } catch (err) {
     if (err?.name === 'AbortError' || state.abort.signal.aborted) {
+      tabReset();
       toast('Geração cancelada.');
     } else {
       console.error(err);
+      tabFinished(false, bookTitle);
+      if ($('#s-notify').checked) notify('⚠️ Erro ao gerar o vídeo', `${bookTitle}: ${err.message || err}`);
       toast(`Erro ao gerar o vídeo: ${err.message || err}`, 8000);
     }
   } finally {
+    stopKeepAlive();
     wakeLock?.release?.().catch(() => {});
     state.busy = false;
     state.abort = null;

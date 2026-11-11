@@ -30,7 +30,7 @@ export function codecLabel(codec) {
  *   fps: number,
  *   transition: number,             // segundos de fade entre páginas (0 = corte seco)
  *   quality: 'medium'|'high'|'veryhigh',
- *   onProgress: (info:{slide:number, done:number, total:number, time:number, totalTime:number})=>void,
+ *   onProgress: (info:{slide:number, page:number, total:number, time:number, totalTime:number})=>void,
  *   signal?: AbortSignal,
  * }} o
  * @returns {Promise<{blob: Blob, codec: string, duration: number}>}
@@ -108,10 +108,14 @@ export async function encodeVideo(o) {
         await source.add(frameNo * frameDur, frameDur, { keyFrame: f === 0 || f === fadeFrames });
         frameNo++;
         if ((f & 7) === 0 && o.signal?.aborted) throw new DOMException('Cancelado', 'AbortError');
+        // progresso também no meio da página (a cada segundo de vídeo)
+        if (frameNo % Math.max(1, Math.round(fps)) === 0 && f < frames - 1) {
+          o.onProgress?.({ slide: slides[k], page: k + 1, total: slides.length, time: frameNo * frameDur, totalTime });
+        }
       }
       t += dur;
       prevCtx.drawImage(next, 0, 0);
-      o.onProgress?.({ slide: slides[k], done: k + 1, total: slides.length, time: t, totalTime });
+      o.onProgress?.({ slide: slides[k], page: k + 1, total: slides.length, time: t, totalTime });
     }
 
     await output.finalize();
