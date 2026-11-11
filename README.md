@@ -30,6 +30,7 @@ Não suportados no momento: CBR (RAR), DjVu, `.doc` antigo, KFX e livros com DRM
 - **Layout:** 1 página por tela ou 2 (livro aberto), página inteira ou preenchendo a tela, cor de fundo, número da página.
 - **Texto (EPUB, MOBI, DOCX, TXT…):** temas claro/sépia/escuro/lousa, fonte, tamanho, entrelinha, margem e justificação.
 - Prévia ao vivo e miniaturas de todas as páginas, estimativa da duração total, barra de progresso com tempo restante e botão de cancelar.
+- **Conversão em segundo plano:** dá para trocar de aba durante a conversão. O progresso aparece no título e no ícone da aba (⏳ 37%… ✅ Vídeo pronto!) e, se a pessoa quiser, uma notificação avisa quando termina. Para isso o site toca um som inaudível durante a conversão, o que impede o Chrome de congelar a aba (aparece um ícone de alto-falante nela).
 
 ## Requisitos do navegador
 

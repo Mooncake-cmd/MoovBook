@@ -6,6 +6,51 @@ import { countWords } from '../layout/blocks.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
+installHiddenTabFrameScheduler();
+
+/**
+ * O pdf.js desenha cada página em etapas e espera um requestAnimationFrame entre
+ * elas. O navegador não entrega esses quadros a abas escondidas: com a aba em
+ * segundo plano, a página nunca terminava de ser desenhada e a conversão parava.
+ * Aqui, enquanto a aba estiver escondida, cada pedido de quadro também é
+ * atendido por um MessageChannel (que o navegador não pausa). O que rodar
+ * primeiro executa a etapa; com a aba visível nada muda.
+ */
+function installHiddenTabFrameScheduler() {
+  if (window.__moovbookFrameScheduler) return;
+  window.__moovbookFrameScheduler = true;
+  const nativeRequest = window.requestAnimationFrame.bind(window);
+  const nativeCancel = window.cancelAnimationFrame.bind(window);
+  const pending = new Map(); // id -> { cb, nativeId }
+  let nextId = 1;
+  const channel = new MessageChannel();
+  const run = (id) => {
+    const job = pending.get(id);
+    if (!job) return;
+    pending.delete(id);
+    nativeCancel(job.nativeId);
+    job.cb(performance.now());
+  };
+  channel.port1.onmessage = (e) => run(e.data);
+
+  window.requestAnimationFrame = (cb) => {
+    const id = nextId++;
+    pending.set(id, { cb, nativeId: nativeRequest(() => run(id)) });
+    if (document.hidden) channel.port2.postMessage(id);
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => {
+    const job = pending.get(id);
+    if (!job) return;
+    nativeCancel(job.nativeId);
+    pending.delete(id);
+  };
+  // pedidos feitos antes de a aba sumir também precisam seguir
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) for (const id of pending.keys()) channel.port2.postMessage(id);
+  });
+}
+
 // URL absoluta: o worker do pdf.js resolve caminhos relativos a partir de si mesmo
 const ASSETS = new URL(`${import.meta.env.BASE_URL}pdfjs/`, document.baseURI).href;
 
