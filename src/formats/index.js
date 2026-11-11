@@ -1,7 +1,7 @@
 // Detecta o formato do(s) arquivo(s) e carrega o livro correspondente.
 
 import JSZip from 'jszip';
-import { IMAGE_EXT, zipFile } from './common.js';
+import { IMAGE_EXT, zipFile, isUsableTitle, fileBaseName } from './common.js';
 import { makeImageBook, imageEntriesFromZip, imageEntriesFromFiles } from './images.js';
 
 export const SUPPORTED = [
@@ -35,6 +35,13 @@ const UNSUPPORTED = {
  * @param {(p:number)=>void} [onProgress]
  */
 export async function loadBook(files, onProgress) {
+  const book = await openBook(files, onProgress);
+  // Título interno inútil (ex.: "Boyer00.indd")? Usa o nome do arquivo escolhido.
+  if (files.length === 1 && !isUsableTitle(book.title)) book.title = fileBaseName(files[0].name);
+  return book;
+}
+
+async function openBook(files, onProgress) {
   if (!files.length) throw new Error('Nenhum arquivo selecionado.');
 
   // Várias imagens soltas formam um único livro
