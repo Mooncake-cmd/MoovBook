@@ -3,7 +3,7 @@ import { paginate, breakLines } from '../src/layout/paginate.js';
 import { domToBlocks, countWords } from '../src/layout/blocks.js';
 import { textToBlocks, markdownToHtml, rtfToBlocks } from '../src/formats/text.js';
 import { palmDocDecompress, trailingSize } from '../src/formats/mobi.js';
-import { resolvePath, decodeText } from '../src/formats/common.js';
+import { resolvePath, decodeText, isUsableTitle, fileBaseName } from '../src/formats/common.js';
 import { fitRect } from '../src/render.js';
 
 // medição falsa: cada caractere tem 10px (negrito 11px)
@@ -154,5 +154,18 @@ describe('utilitários', () => {
   it('ajusta retângulos (conter / preencher)', () => {
     expect(fitRect(100, 200, 400, 200, 'contain')).toEqual({ x: 150, y: 0, w: 100, h: 200 });
     expect(fitRect(100, 200, 400, 200, 'cover')).toMatchObject({ w: 400, h: 800 });
+  });
+  it('rejeita títulos internos que são nomes de arquivo ou textos automáticos', () => {
+    for (const bad of ['Boyer00.indd', 'Capitulo1.docx', 'Microsoft Word - Relatorio.doc', 'Untitled', 'Sem título', '', '   ', '12345', 'C:\\Users\\ana\\livro', 'livro.pdf', null]) {
+      expect(isUsableTitle(bad), String(bad)).toBe(false);
+    }
+    for (const good of ['Dom Casmurro', 'O Pequeno Príncipe', '1984: edição especial', 'Harry Potter e a Pedra Filosofal', 'Node.js na prática']) {
+      expect(isUsableTitle(good), good).toBe(true);
+    }
+  });
+  it('tira a extensão do nome do arquivo', () => {
+    expect(fileBaseName('O Cortiço.pdf')).toBe('O Cortiço');
+    expect(fileBaseName('livro.fb2.zip')).toBe('livro');
+    expect(fileBaseName('sem-extensao')).toBe('sem-extensao');
   });
 });

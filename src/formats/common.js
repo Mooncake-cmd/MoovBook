@@ -12,6 +12,31 @@ export function mimeFromName(name) {
   return MIME_BY_EXT[ext] || 'application/octet-stream';
 }
 
+// Extensões de arquivos de trabalho que programas gravam como "título" do livro
+// (ex.: o InDesign grava "Boyer00.indd" no título interno do PDF exportado).
+const FILENAME_TITLE = /\.(indd|indt|idml|inx|qxd|qxp|pmd|p65|fm|book|docx?|dotx?|odt|ott|rtf|wpd|pages|pub|pdf|ps|eps|ai|psd|cdr|tex|dvi|txt|md|html?|xhtml|xml|epub|mobi|azw3?)$/i;
+const PLACEHOLDER_TITLE = /^(untitled|untitled document|sem t[ií]tulo|documento?\s*\d*|title|t[ií]tulo|unknown|desconhecido|none|null|microsoft word|pdf)$/i;
+
+/**
+ * Diz se um título vindo dos metadados do arquivo parece um título de verdade
+ * (e não o nome de um arquivo de trabalho, um texto automático ou lixo).
+ */
+export function isUsableTitle(title) {
+  const t = String(title ?? '').trim();
+  if (!t) return false;
+  if (!/\p{L}/u.test(t)) return false; // só números/símbolos
+  if (FILENAME_TITLE.test(t)) return false;
+  if (PLACEHOLDER_TITLE.test(t)) return false;
+  if (/^microsoft (word|powerpoint|excel|publisher)\s*-/i.test(t)) return false;
+  if (/^[a-z]:\\|^\/|^file:/i.test(t)) return false; // caminho de arquivo
+  return true;
+}
+
+/** Nome do arquivo sem a extensão (trata também ".fb2.zip"). */
+export function fileBaseName(name) {
+  return name.replace(/\.(fb2\.zip|[^.]+)$/i, '') || name;
+}
+
 /** Ordenação "natural": pagina2 < pagina10 */
 export const naturalCompare = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
 
